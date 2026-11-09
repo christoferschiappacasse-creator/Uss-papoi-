@@ -11,3 +11,7 @@ Este proyecto utiliza Streamlit, Pandas y Plotly para analizar `ventas.csv`, que
 No subir carpetas `venv` ni archivos `.zip` como sustituto de estos archivos.
 
 **Nota:** unidades vendidas no significa ingresos monetarios; no hay precios en el CSV.
+
+## Personalización
+
+Incluye portada con diseño propio, conclusiones automáticas, comparación anual y sección que explica el código. En la barra lateral puedes cambiar el nombre del proyecto y escribir los integrantes. Para añadir una foto fija a la portada, sube un archivo `portada.jpg` a la misma carpeta que `app.py`; no es obligatorio.

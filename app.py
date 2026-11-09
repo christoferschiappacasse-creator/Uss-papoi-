@@ -35,9 +35,27 @@ def leer_ventas(contenido: bytes) -> pd.DataFrame:
     df["año"] = df["fecha"].dt.year
     return df
 
-st.title("📊 Panel interactivo de ventas")
-st.caption("Control de Programación 2 · Streamlit, Pandas y Plotly")
-st.write("Explora las unidades vendidas por mes y color. Filtra los resultados, observa gráficos interactivos y descarga la tabla.")
+st.markdown("""<style>
+.block-container {padding-top: 2rem;}
+.hero {background: linear-gradient(115deg, #132b4a, #176a80); color: white;
+       padding: 1.6rem 2rem; border-radius: 18px; margin-bottom: 1.2rem;}
+.hero h1 {color: white; font-size: clamp(1.8rem,3vw,2.7rem); margin: .1rem 0 .4rem;}
+.hero p {color: #e5f6f9; margin: 0;}
+</style>""", unsafe_allow_html=True)
+st.sidebar.header("Personaliza tu panel")
+nombre_proyecto = st.sidebar.text_input("Nombre del proyecto", value="Observatorio de ventas")
+integrantes = st.sidebar.text_input("Integrantes (opcional)", value="")
+st.markdown(f'<div class="hero"><div>📊 PROGRAMACIÓN 2 · PROYECTO INTERACTIVO</div>'
+            f'<h1>{__import__("html").escape(nombre_proyecto)}</h1>'
+            f'<p>Explora ventas mensuales, compara categorías y descubre tendencias en los datos.</p>'
+            f'</div>', unsafe_allow_html=True)
+if integrantes.strip():
+    st.caption(f"Elaborado por: {integrantes.strip()}")
+st.caption("Herramientas: Python · Streamlit · Pandas · Plotly")
+st.write("Los gráficos se actualizan al cambiar los filtros. Los datos representan **unidades**, no ingresos en dinero.")
+if Path(__file__).with_name("portada.jpg").exists():
+    st.image(str(Path(__file__).with_name("portada.jpg")), caption="Imagen de portada del proyecto", use_container_width=True)
+
 
 st.sidebar.header("Datos de ventas")
 archivo = st.sidebar.file_uploader("Cargar otro CSV (opcional)", type=["csv"])
@@ -76,6 +94,17 @@ cuarta.metric("Meses con ventas", filtrado["mes"].nunique())
 mensual = filtrado.groupby(["mes", "color"], as_index=False)["unidades"].sum()
 resumen_color = filtrado.groupby("color", as_index=False)["unidades"].sum().sort_values("unidades", ascending=False)
 
+st.subheader("🔎 Lo más importante de los datos")
+total_unidades = filtrado["unidades"].sum()
+mejor_color = resumen_color.iloc[0]
+por_mes = filtrado.groupby("mes", as_index=False)["unidades"].sum().sort_values("unidades", ascending=False)
+mejor_mes = por_mes.iloc[0]
+participacion = mejor_color["unidades"] / total_unidades * 100
+st.info(f"El color **{mejor_color['color']}** registra la mayor cantidad de unidades "
+        f"({int(mejor_color['unidades']):,}, el {participacion:.1f}% del total seleccionado). "
+        f"El mes con más unidades es **{mejor_mes['mes']}**, con **{int(mejor_mes['unidades']):,}**."
+        .replace(",", "."))
+
 st.subheader("Evolución mensual de unidades vendidas")
 tipo = st.radio("Visualización", ["Líneas", "Barras"], horizontal=True)
 if tipo == "Líneas":
@@ -93,6 +122,19 @@ with der:
     st.subheader("Participación por color")
     st.plotly_chart(px.pie(resumen_color, names="color", values="unidades", hole=0.35), use_container_width=True)
 
+st.subheader("📅 Comparación entre años")
+anual = filtrado.groupby("año", as_index=False)["unidades"].sum().sort_values("año")
+st.plotly_chart(px.bar(anual, x="año", y="unidades", text_auto=True,
+                       labels={"año": "Año", "unidades": "Unidades vendidas"},
+                       title="Unidades vendidas por año"), use_container_width=True)
+if len(anual) >= 2:
+    anterior, actual = anual.iloc[-2], anual.iloc[-1]
+    if anterior["unidades"]:
+        cambio = (actual["unidades"] / anterior["unidades"] - 1) * 100
+        st.caption(f"Entre {int(anterior['año'])} y {int(actual['año'])}, las unidades "
+                   f"{'aumentaron' if cambio >= 0 else 'disminuyeron'} {abs(cambio):.1f}%. "
+                   "El cálculo utiliza los datos seleccionados en los filtros.")
+
 st.subheader("Análisis estadístico")
 resumen = filtrado.groupby("color")["unidades"].agg(["count", "sum", "mean", "min", "max"]).rename(columns={"count": "Registros", "sum": "Total", "mean": "Promedio", "min": "Mínimo", "max": "Máximo"})
 st.dataframe(resumen.round(2), use_container_width=True)
@@ -102,3 +144,19 @@ tabla = filtrado[["fecha", "color", "unidades"]].sort_values(["fecha", "color"])
 st.dataframe(tabla, use_container_width=True, hide_index=True)
 st.download_button("⬇️ Descargar registros filtrados", data=tabla.to_csv(index=False, sep=";").encode("utf-8-sig"), file_name="ventas_filtradas.csv", mime="text/csv")
 st.caption("Los datos representan cantidades de unidades, no valores monetarios. Fuente: ventas.csv.")
+
+
+with st.expander("📘 ¿Cómo funciona este proyecto?"):
+    st.markdown("""**1. Fuente de datos:** se lee `ventas.csv` automáticamente, o se puede subir otro CSV.
+
+**2. Limpieza:** se revisan las columnas `fecha`, `color` y `unidades` y se convierten a sus tipos correctos.
+
+**3. Filtros:** se seleccionan los años y colores que se desean analizar.
+
+**4. Visualización:** Pandas resume los datos y Plotly construye los gráficos.
+
+**5. Interpretación:** el panel calcula el color y mes con más unidades, además de comparar años.
+
+**6. Descarga:** se exporta el detalle filtrado en formato CSV.
+
+*Las conclusiones cambian según los filtros, y no representan montos de dinero.*""")
